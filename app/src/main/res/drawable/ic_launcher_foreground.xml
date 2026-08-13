@@ -1,0 +1,42 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Bus body (main container) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M30,22 C30,19 34,19 38,19 L70,19 C74,19 78,19 78,22 L78,72 C78,74 76,76 74,76 L34,76 C32,76 30,74 30,72 Z" />
+    <!-- Windows - Upper Deck -->
+    <path
+        android:fillColor="#E11B22"
+        android:pathData="M34,25 L51,25 L51,39 L34,39 Z" />
+    <path
+        android:fillColor="#E11B22"
+        android:pathData="M55,25 L74,25 L74,39 L55,39 Z" />
+    <!-- Windows - Lower Deck -->
+    <path
+        android:fillColor="#E11B22"
+        android:pathData="M34,45 L51,45 L51,59 L34,59 Z" />
+    <path
+        android:fillColor="#E11B22"
+        android:pathData="M55,45 L74,45 L74,59 L55,59 Z" />
+    <!-- Grill and bumper details -->
+    <path
+        android:fillColor="#B0B0B0"
+        android:pathData="M40,65 L68,65 L68,68 L40,68 Z" />
+    <!-- Headlights -->
+    <path
+        android:fillColor="#FFEB3B"
+        android:pathData="M35,66 A2.5,2.5 0 1,1 30,66 A2.5,2.5 0 1,1 35,66" />
+    <path
+        android:fillColor="#FFEB3B"
+        android:pathData="M78,66 A2.5,2.5 0 1,1 73,66 A2.5,2.5 0 1,1 78,66" />
+    <!-- Wheels -->
+    <path
+        android:fillColor="#212121"
+        android:pathData="M38,76 A5,5 0 1,1 28,76 A5,5 0 1,1 38,76" />
+    <path
+        android:fillColor="#212121"
+        android:pathData="M80,76 A5,5 0 1,1 70,76 A5,5 0 1,1 80,76" />
+</vector>
