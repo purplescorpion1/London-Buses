@@ -9,6 +9,10 @@ import com.example.londonbuses.data.api.TflApiService
 import com.example.londonbuses.data.models.ArrivalPrediction
 import com.example.londonbuses.data.models.LineRouteSequence
 import com.example.londonbuses.data.models.StopPoint
+import com.example.londonbuses.data.models.LineStatusResponse
+import com.example.londonbuses.data.models.StopDisruption
+import com.example.londonbuses.data.models.TimetableResponse
+import com.example.londonbuses.data.models.JourneyResponse
 import com.example.londonbuses.utils.LocationHelper
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -43,6 +47,13 @@ class LondonBusesViewModel(application: Application) : AndroidViewModel(applicat
     private val _lineArrivals = MutableStateFlow<Map<String, List<ArrivalPrediction>>>(emptyMap())
     val lineArrivals: StateFlow<Map<String, List<ArrivalPrediction>>> = _lineArrivals
 
+    // Line Status
+    private val _lineStatus = MutableStateFlow<LineStatusResponse?>(null)
+    val lineStatus: StateFlow<LineStatusResponse?> = _lineStatus
+
+    private val _isLineStatusLoading = MutableStateFlow(false)
+    val isLineStatusLoading: StateFlow<Boolean> = _isLineStatusLoading
+
     // Nearby Screen states
     private val _isNearbyLoading = MutableStateFlow(false)
     val isNearbyLoading: StateFlow<Boolean> = _isNearbyLoading
@@ -62,6 +73,36 @@ class LondonBusesViewModel(application: Application) : AndroidViewModel(applicat
 
     private val _isSelectedStopLoading = MutableStateFlow(false)
     val isSelectedStopLoading: StateFlow<Boolean> = _isSelectedStopLoading
+
+    // Stop Disruptions
+    private val _stopDisruptions = MutableStateFlow<List<StopDisruption>>(emptyList())
+    val stopDisruptions: StateFlow<List<StopDisruption>> = _stopDisruptions
+
+    private val _isStopDisruptionsLoading = MutableStateFlow(false)
+    val isStopDisruptionsLoading: StateFlow<Boolean> = _isStopDisruptionsLoading
+
+    // Timetable Fallback
+    private val _selectedStopTimetable = MutableStateFlow<TimetableResponse?>(null)
+    val selectedStopTimetable: StateFlow<TimetableResponse?> = _selectedStopTimetable
+
+    private val _isSelectedStopTimetableLoading = MutableStateFlow(false)
+    val isSelectedStopTimetableLoading: StateFlow<Boolean> = _isSelectedStopTimetableLoading
+
+    // Journey Planner
+    private val _journeyFromQuery = MutableStateFlow("")
+    val journeyFromQuery: StateFlow<String> = _journeyFromQuery
+
+    private val _journeyToQuery = MutableStateFlow("")
+    val journeyToQuery: StateFlow<String> = _journeyToQuery
+
+    private val _journeyResults = MutableStateFlow<JourneyResponse?>(null)
+    val journeyResults: StateFlow<JourneyResponse?> = _journeyResults
+
+    private val _isJourneyLoading = MutableStateFlow(false)
+    val isJourneyLoading: StateFlow<Boolean> = _isJourneyLoading
+
+    private val _journeyError = MutableStateFlow<String?>(null)
+    val journeyError: StateFlow<String?> = _journeyError
 
     init {
         // Fetch location on startup
@@ -87,6 +128,83 @@ class LondonBusesViewModel(application: Application) : AndroidViewModel(applicat
         _searchQuery.value = query
     }
 
+    fun updateJourneyFromQuery(query: String) {
+        _journeyFromQuery.value = query
+    }
+
+    fun updateJourneyToQuery(query: String) {
+        _journeyToQuery.value = query
+    }
+
+    fun searchJourney() {
+        val from = _journeyFromQuery.value.trim()
+        val to = _journeyToQuery.value.trim()
+        if (from.isEmpty() || to.isEmpty()) return
+
+        viewModelScope.launch {
+            _isJourneyLoading.value = true
+            _journeyError.value = null
+            _journeyResults.value = null
+
+            try {
+                val results = apiService.getJourneyResults(from = from, to = to)
+                _journeyResults.value = results
+                if (results.journeys.isEmpty()) {
+                    _journeyError.value = "No journeys found between '$from' and '$to'."
+                }
+            } catch (e: Exception) {
+                _journeyError.value = "Failed to plan journey. Please check your locations and try again."
+            } finally {
+                _isJourneyLoading.value = false
+            }
+        }
+    }
+
+    fun fetchLineStatus(lineId: String) {
+        viewModelScope.launch {
+            _isLineStatusLoading.value = true
+            _lineStatus.value = null
+            try {
+                val response = apiService.getLineStatus(lineId)
+                _lineStatus.value = response.firstOrNull()
+            } catch (e: Exception) {
+                _lineStatus.value = null
+            } finally {
+                _isLineStatusLoading.value = false
+            }
+        }
+    }
+
+    fun fetchStopDisruptions(stopId: String) {
+        viewModelScope.launch {
+            _isStopDisruptionsLoading.value = true
+            _stopDisruptions.value = emptyList()
+            try {
+                val response = apiService.getStopDisruptions(stopId)
+                _stopDisruptions.value = response
+            } catch (e: Exception) {
+                _stopDisruptions.value = emptyList()
+            } finally {
+                _isStopDisruptionsLoading.value = false
+            }
+        }
+    }
+
+    fun fetchStopTimetable(lineId: String, stopId: String) {
+        viewModelScope.launch {
+            _isSelectedStopTimetableLoading.value = true
+            _selectedStopTimetable.value = null
+            try {
+                val response = apiService.getTimetable(lineId, stopId)
+                _selectedStopTimetable.value = response
+            } catch (e: Exception) {
+                _selectedStopTimetable.value = null
+            } finally {
+                _isSelectedStopTimetableLoading.value = false
+            }
+        }
+    }
+
     fun searchBusRoute(lineId: String) {
         val trimmed = lineId.trim()
         if (trimmed.isEmpty()) return
@@ -96,12 +214,16 @@ class LondonBusesViewModel(application: Application) : AndroidViewModel(applicat
             _searchError.value = null
             _lineRouteSequence.value = null
             _lineArrivals.value = emptyMap()
+            _lineStatus.value = null
 
             try {
                 // Fetch route sequence (try lowercase lineId)
                 val cleanLineId = trimmed.lowercase()
                 val sequence = apiService.getRouteSequence(cleanLineId)
                 _lineRouteSequence.value = sequence
+
+                // Fetch line status
+                fetchLineStatus(cleanLineId)
 
                 // Fetch live predictions for the entire line to map times along the stops
                 try {
@@ -142,7 +264,17 @@ class LondonBusesViewModel(application: Application) : AndroidViewModel(applicat
     fun selectStop(stop: StopPoint?) {
         _selectedStop.value = stop
         _selectedStopPredictions.value = emptyList()
+        _stopDisruptions.value = emptyList()
+        _selectedStopTimetable.value = null
         if (stop == null) return
+
+        // Fetch stop disruptions
+        fetchStopDisruptions(stop.id)
+
+        // Fetch timetable fallback if we have a searched line context
+        lineRouteSequence.value?.lineId?.let { lineId ->
+            fetchStopTimetable(lineId.lowercase(), stop.id)
+        }
 
         viewModelScope.launch {
             _isSelectedStopLoading.value = true

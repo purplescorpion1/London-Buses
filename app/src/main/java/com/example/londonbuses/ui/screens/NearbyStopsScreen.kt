@@ -36,6 +36,9 @@ fun NearbyStopsScreen(viewModel: LondonBusesViewModel) {
     val selectedStop by viewModel.selectedStop.collectAsState()
     val selectedStopPredictions by viewModel.selectedStopPredictions.collectAsState()
     val isSelectedStopLoading by viewModel.isSelectedStopLoading.collectAsState()
+    val stopDisruptions by viewModel.stopDisruptions.collectAsState()
+    val selectedStopTimetable by viewModel.selectedStopTimetable.collectAsState()
+    val isSelectedStopTimetableLoading by viewModel.isSelectedStopTimetableLoading.collectAsState()
 
     // Location Simulation State
     var showSimulator by remember { mutableStateOf(false) }
@@ -265,6 +268,33 @@ fun NearbyStopsScreen(viewModel: LondonBusesViewModel) {
 
                         HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
 
+                        // Active stop disruptions/closures
+                        if (stopDisruptions.isNotEmpty()) {
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 8.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(8.dp)) {
+                                    Text(
+                                        text = "⚠️ Active Stop Warning:",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onErrorContainer
+                                    )
+                                    stopDisruptions.forEach { disruption ->
+                                        Text(
+                                            text = disruption.description ?: "Stop disruption active.",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onErrorContainer,
+                                            modifier = Modifier.padding(top = 2.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
                         Text(
                             text = "Live approaching buses & times:",
                             style = MaterialTheme.typography.titleSmall,
@@ -282,13 +312,60 @@ fun NearbyStopsScreen(viewModel: LondonBusesViewModel) {
                                 CircularProgressIndicator(color = Color(0xFFE11B22))
                             }
                         } else if (selectedStopPredictions.isEmpty()) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(100.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text("No approaching buses found.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                Text(
+                                    text = "No live approaching buses found.",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.padding(bottom = 8.dp)
+                                )
+
+                                val scheduleList = selectedStopTimetable?.timetable?.routes?.flatMap { route ->
+                                    route.schedules.flatMap { schedule ->
+                                        schedule.knownJourneys.map { it.displayTime }
+                                    }
+                                }?.distinct()?.sorted() ?: emptyList()
+
+                                if (isSelectedStopTimetableLoading) {
+                                    CircularProgressIndicator(color = Color(0xFFE11B22), modifier = Modifier.align(Alignment.CenterHorizontally))
+                                } else if (scheduleList.isNotEmpty()) {
+                                    Text(
+                                        text = "Scheduled Timetable Fallback:",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFFE11B22),
+                                        modifier = Modifier.padding(vertical = 4.dp)
+                                    )
+                                    Text(
+                                        text = "Bus ${selectedStopTimetable?.lineName?.uppercase() ?: ""} is scheduled to arrive at: ",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    LazyColumn(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .heightIn(max = 150.dp),
+                                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        items(scheduleList.size) { idx ->
+                                            val time = scheduleList[idx]
+                                            Card(
+                                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                Text(
+                                                    text = "Scheduled Departure: $time",
+                                                    modifier = Modifier.padding(8.dp),
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    style = MaterialTheme.typography.bodyMedium
+                                                )
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    Text("No scheduled timetable found.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
                             }
                         } else {
                             LazyColumn(

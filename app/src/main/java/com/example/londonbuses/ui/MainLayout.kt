@@ -5,6 +5,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DirectionsBus
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Map
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -19,6 +20,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.londonbuses.ui.screens.NearbyStopsScreen
 import com.example.londonbuses.ui.screens.RouteSearchScreen
 import com.example.londonbuses.ui.screens.SettingsScreen
+import com.example.londonbuses.ui.screens.JourneyPlannerScreen
 
 sealed class Screen(val route: String, val title: String, val icon: @Composable () -> Unit) {
     object RouteSearch : Screen(
@@ -30,6 +32,11 @@ sealed class Screen(val route: String, val title: String, val icon: @Composable 
         route = "nearby_stops",
         title = "Nearby",
         icon = { Icon(Icons.Default.MyLocation, contentDescription = "Nearby Stops") }
+    )
+    object JourneyPlanner : Screen(
+        route = "journey_planner",
+        title = "Journey",
+        icon = { Icon(Icons.Default.Map, contentDescription = "Journey Planner") }
     )
     object Settings : Screen(
         route = "settings",
@@ -60,7 +67,7 @@ fun MainLayout(viewModel: LondonBusesViewModel) {
                 containerColor = MaterialTheme.colorScheme.surfaceVariant,
                 contentColor = MaterialTheme.colorScheme.onSurfaceVariant
             ) {
-                val items = listOf(Screen.RouteSearch, Screen.NearbyStops, Screen.Settings)
+                val items = listOf(Screen.RouteSearch, Screen.NearbyStops, Screen.JourneyPlanner, Screen.Settings)
                 items.forEach { screen ->
                     val isSelected = currentRoute == screen.route
                     NavigationBarItem(
@@ -96,6 +103,9 @@ fun MainLayout(viewModel: LondonBusesViewModel) {
             }
             composable(Screen.NearbyStops.route) {
                 NearbyStopsScreen(viewModel = viewModel)
+            }
+            composable(Screen.JourneyPlanner.route) {
+                JourneyPlannerScreen(viewModel = viewModel)
             }
             composable(Screen.Settings.route) {
                 SettingsScreen(viewModel = viewModel)
