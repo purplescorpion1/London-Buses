@@ -10,9 +10,9 @@ The application requires a TfL API key to fetch live bus routes, arrivals, disru
 
 1. **Sign Up / Log In**: Visit the [TfL Developer Portal](https://api-portal.tfl.gov.uk/).
 2. **Register**: Register a free account or log into your existing one.
-3. **Products & Subscriptions**: Navigate to the "Products" tab and select "Unified API".
-4. **Subscribe**: Create a free subscription. Once approved, your subscription key (Primary Key) will be generated.
-5. **Copy Subscription Key**: This subscription key is your `app_key` used to authorize API requests.
+3. **Products & Subscriptions**: Navigate to the "Products" tab and select "500 Requests per min".
+4. **Subscribe**: Create a free subscription by entering a name and selecting subscript. Your subscription key (Primary Key) will be generated and viewable in your profile.
+5. **Copy Subscription Key**: The primary subscription key found in your profile is your `app_key` used to authorize API requests.
 
 ---
 
