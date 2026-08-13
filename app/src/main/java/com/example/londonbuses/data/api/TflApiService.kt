@@ -23,8 +23,8 @@ interface TflApiService {
 
     @GET("StopPoint")
     suspend fun getStopPointsByGeo(
-        @Query("location.lat") lat: Double,
-        @Query("location.lon") lon: Double,
+        @Query("lat") lat: Double,
+        @Query("lon") lon: Double,
         @Query("stopTypes") stopTypes: String = "NaptanPublicBusCoachTram",
         @Query("radius") radius: Int = 1000,
         @Query("returnLines") returnLines: Boolean = true

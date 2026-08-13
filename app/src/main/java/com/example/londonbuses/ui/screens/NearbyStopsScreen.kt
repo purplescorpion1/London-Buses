@@ -42,17 +42,11 @@ fun NearbyStopsScreen(viewModel: LondonBusesViewModel) {
     var simLatText by remember { mutableStateOf(deviceLocation.latitude.toString()) }
     var simLonText by remember { mutableStateOf(deviceLocation.longitude.toString()) }
 
-    // Sync input fields when location updates
+    // Sync input fields and fetch nearby stops when location updates
     LaunchedEffect(deviceLocation) {
         simLatText = deviceLocation.latitude.toString()
         simLonText = deviceLocation.longitude.toString()
-    }
-
-    // Auto-fetch on first load if empty
-    LaunchedEffect(Unit) {
-        if (nearbyStops.isEmpty()) {
-            viewModel.fetchNearbyStops()
-        }
+        viewModel.fetchNearbyStops()
     }
 
     Column(
