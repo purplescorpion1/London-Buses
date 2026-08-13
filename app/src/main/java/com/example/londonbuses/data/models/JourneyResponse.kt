@@ -37,6 +37,21 @@ data class Journey(
 )
 
 @Serializable
+data class DisambiguationOption(
+    val parameterValue: String? = null,
+    val place: LegPoint? = null,
+    val matchQuality: Int? = null
+)
+
+@Serializable
+data class Disambiguation(
+    val matchStatus: String? = null,
+    val disambiguationOptions: List<DisambiguationOption> = emptyList()
+)
+
+@Serializable
 data class JourneyResponse(
-    val journeys: List<Journey> = emptyList()
+    val journeys: List<Journey> = emptyList(),
+    val fromLocationDisambiguation: Disambiguation? = null,
+    val toLocationDisambiguation: Disambiguation? = null
 )

@@ -7,6 +7,7 @@ import com.example.londonbuses.data.models.LineStatusResponse
 import com.example.londonbuses.data.models.StopDisruption
 import com.example.londonbuses.data.models.TimetableResponse
 import com.example.londonbuses.data.models.JourneyResponse
+import com.example.londonbuses.data.models.StopPointSearchResponse
 import retrofit2.http.GET
 import retrofit2.http.Path
 import retrofit2.http.Query
@@ -62,4 +63,10 @@ interface TflApiService {
     suspend fun getStopPointArrivals(
         @Path("stopPointId") stopPointId: String
     ): List<ArrivalPrediction>
+
+    @GET("StopPoint/Search/{query}")
+    suspend fun searchStopPoints(
+        @Path("query") query: String,
+        @Query("modes") modes: String = "bus,tube"
+    ): StopPointSearchResponse
 }

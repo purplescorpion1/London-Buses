@@ -21,6 +21,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.londonbuses.data.models.Journey
 import com.example.londonbuses.data.models.JourneyLeg
+import com.example.londonbuses.data.models.MatchedStop
+import com.example.londonbuses.data.models.DisambiguationOption
+import com.example.londonbuses.data.models.Disambiguation
 import com.example.londonbuses.ui.LondonBusesViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -32,6 +35,9 @@ fun JourneyPlannerScreen(viewModel: LondonBusesViewModel) {
     val isJourneyLoading by viewModel.isJourneyLoading.collectAsState()
     val journeyResults by viewModel.journeyResults.collectAsState()
     val journeyError by viewModel.journeyError.collectAsState()
+
+    val fromSuggestions by viewModel.fromSuggestions.collectAsState()
+    val toSuggestions by viewModel.toSuggestions.collectAsState()
 
     Column(
         modifier = Modifier
@@ -79,8 +85,15 @@ fun JourneyPlannerScreen(viewModel: LondonBusesViewModel) {
                     leadingIcon = { Icon(Icons.Default.LocationOn, contentDescription = "Origin") },
                     trailingIcon = {
                         if (fromQuery.isNotEmpty()) {
-                            IconButton(onClick = { viewModel.updateJourneyFromQuery("") }) {
+                            IconButton(onClick = {
+                                viewModel.updateJourneyFromQuery("")
+                                viewModel.clearFromSuggestions()
+                            }) {
                                 Icon(Icons.Default.Close, contentDescription = "Clear")
+                            }
+                        } else {
+                            IconButton(onClick = { viewModel.updateJourneyFromQuery("Current Location") }) {
+                                Icon(Icons.Default.LocationOn, contentDescription = "Use Current Location", tint = Color(0xFFE11B22))
                             }
                         }
                     },
@@ -89,6 +102,45 @@ fun JourneyPlannerScreen(viewModel: LondonBusesViewModel) {
                         focusedLabelColor = Color(0xFFE11B22)
                     )
                 )
+
+                // From Suggestions Dropdown List
+                if (fromSuggestions.isNotEmpty()) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        border = CardDefaults.outlinedCardBorder()
+                    ) {
+                        Column {
+                            fromSuggestions.take(5).forEach { match ->
+                                TextButton(
+                                    onClick = {
+                                        if (match.lat != null && match.lon != null) {
+                                            viewModel.updateJourneyFromQuery("${match.lat},${match.lon}")
+                                        } else {
+                                            viewModel.updateJourneyFromQuery(match.name ?: "")
+                                        }
+                                        viewModel.clearFromSuggestions()
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(Icons.Default.DirectionsBus, contentDescription = null, tint = Color(0xFFE11B22), modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = match.name ?: "",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            textAlign = TextAlign.Start,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -102,8 +154,15 @@ fun JourneyPlannerScreen(viewModel: LondonBusesViewModel) {
                     leadingIcon = { Icon(Icons.Default.LocationOn, contentDescription = "Destination") },
                     trailingIcon = {
                         if (toQuery.isNotEmpty()) {
-                            IconButton(onClick = { viewModel.updateJourneyToQuery("") }) {
+                            IconButton(onClick = {
+                                viewModel.updateJourneyToQuery("")
+                                viewModel.clearToSuggestions()
+                            }) {
                                 Icon(Icons.Default.Close, contentDescription = "Clear")
+                            }
+                        } else {
+                            IconButton(onClick = { viewModel.updateJourneyToQuery("Current Location") }) {
+                                Icon(Icons.Default.LocationOn, contentDescription = "Use Current Location", tint = Color(0xFFE11B22))
                             }
                         }
                     },
@@ -113,11 +172,54 @@ fun JourneyPlannerScreen(viewModel: LondonBusesViewModel) {
                     )
                 )
 
+                // To Suggestions Dropdown List
+                if (toSuggestions.isNotEmpty()) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        border = CardDefaults.outlinedCardBorder()
+                    ) {
+                        Column {
+                            toSuggestions.take(5).forEach { match ->
+                                TextButton(
+                                    onClick = {
+                                        if (match.lat != null && match.lon != null) {
+                                            viewModel.updateJourneyToQuery("${match.lat},${match.lon}")
+                                        } else {
+                                            viewModel.updateJourneyToQuery(match.name ?: "")
+                                        }
+                                        viewModel.clearToSuggestions()
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(Icons.Default.DirectionsBus, contentDescription = null, tint = Color(0xFFE11B22), modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = match.name ?: "",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            textAlign = TextAlign.Start,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(12.dp))
 
                 // Search Button
                 Button(
-                    onClick = { viewModel.searchJourney() },
+                    onClick = {
+                        viewModel.clearFromSuggestions()
+                        viewModel.clearToSuggestions()
+                        viewModel.searchJourney()
+                    },
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE11B22)),
                     modifier = Modifier.fillMaxWidth(),
                     enabled = fromQuery.isNotEmpty() && toQuery.isNotEmpty() && !isJourneyLoading
@@ -131,7 +233,7 @@ fun JourneyPlannerScreen(viewModel: LondonBusesViewModel) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // State Feedback / Journey List
+        // State Feedback / Journey List / Disambiguation
         if (isJourneyLoading) {
             Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = Color(0xFFE11B22))
@@ -156,13 +258,136 @@ fun JourneyPlannerScreen(viewModel: LondonBusesViewModel) {
                 )
             }
         } else {
-            val list = journeyResults?.journeys ?: emptyList()
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(list) { journey ->
-                    JourneyCard(journey = journey)
+            val fromDisambig = journeyResults?.fromLocationDisambiguation
+            val toDisambig = journeyResults?.toLocationDisambiguation
+
+            // Check if there are disambiguation options to resolve
+            if (fromDisambig?.disambiguationOptions?.isNotEmpty() == true || toDisambig?.disambiguationOptions?.isNotEmpty() == true) {
+                Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        item {
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                    Text(
+                                        text = "Multiple Locations Found",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFFE11B22)
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "Please select the precise location you meant to resume planning:",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+
+                                    if (fromDisambig?.disambiguationOptions?.isNotEmpty() == true) {
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                        Text(
+                                            text = "Starting From:",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFFE11B22)
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        fromDisambig.disambiguationOptions.take(5).forEach { option ->
+                                            val label = option.place?.commonName ?: option.parameterValue ?: "Unknown location"
+                                            TextButton(
+                                                onClick = {
+                                                    viewModel.updateJourneyFromQuery(option.parameterValue ?: label)
+                                                    viewModel.clearFromSuggestions()
+                                                    viewModel.searchJourney()
+                                                },
+                                                modifier = Modifier.fillMaxWidth(),
+                                                contentPadding = PaddingValues(vertical = 4.dp, horizontal = 0.dp)
+                                            ) {
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Icon(Icons.Default.LocationOn, contentDescription = null, tint = Color(0xFFE11B22), modifier = Modifier.size(16.dp))
+                                                    Spacer(modifier = Modifier.width(8.dp))
+                                                    Text(
+                                                        text = label,
+                                                        style = MaterialTheme.typography.bodyMedium,
+                                                        textAlign = TextAlign.Start,
+                                                        modifier = Modifier.weight(1f),
+                                                        color = MaterialTheme.colorScheme.onSurface
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    if (toDisambig?.disambiguationOptions?.isNotEmpty() == true) {
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                        Text(
+                                            text = "Heading To:",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFFE11B22)
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        toDisambig.disambiguationOptions.take(5).forEach { option ->
+                                            val label = option.place?.commonName ?: option.parameterValue ?: "Unknown location"
+                                            TextButton(
+                                                onClick = {
+                                                    viewModel.updateJourneyToQuery(option.parameterValue ?: label)
+                                                    viewModel.clearToSuggestions()
+                                                    viewModel.searchJourney()
+                                                },
+                                                modifier = Modifier.fillMaxWidth(),
+                                                contentPadding = PaddingValues(vertical = 4.dp, horizontal = 0.dp)
+                                            ) {
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Icon(Icons.Default.LocationOn, contentDescription = null, tint = Color(0xFFE11B22), modifier = Modifier.size(16.dp))
+                                                    Spacer(modifier = Modifier.width(8.dp))
+                                                    Text(
+                                                        text = label,
+                                                        style = MaterialTheme.typography.bodyMedium,
+                                                        textAlign = TextAlign.Start,
+                                                        modifier = Modifier.weight(1f),
+                                                        color = MaterialTheme.colorScheme.onSurface
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                val list = journeyResults?.journeys ?: emptyList()
+                if (list.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
+                        Text(
+                            text = "No journeys found between '${fromQuery}' and '${toQuery}'.",
+                            textAlign = TextAlign.Center,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(32.dp)
+                        )
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(list) { journey ->
+                            JourneyCard(journey = journey)
+                        }
+                    }
                 }
             }
         }
