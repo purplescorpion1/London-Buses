@@ -13,6 +13,7 @@ import com.example.londonbuses.data.models.LineStatusResponse
 import com.example.londonbuses.data.models.StopDisruption
 import com.example.londonbuses.data.models.TimetableResponse
 import com.example.londonbuses.data.models.JourneyResponse
+import com.example.londonbuses.data.models.MatchedStop
 import com.example.londonbuses.utils.LocationHelper
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,6 +23,7 @@ class LondonBusesViewModel(application: Application) : AndroidViewModel(applicat
 
     private val apiService: TflApiService = TflApiClient.createService(application)
     private val credentialManager = CredentialManager(application)
+    private val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
 
     // Api Key State
     private val _apiKey = MutableStateFlow(credentialManager.getApiKey())
@@ -104,6 +106,13 @@ class LondonBusesViewModel(application: Application) : AndroidViewModel(applicat
     private val _journeyError = MutableStateFlow<String?>(null)
     val journeyError: StateFlow<String?> = _journeyError
 
+    // Autocomplete Suggestions State
+    private val _fromSuggestions = MutableStateFlow<List<MatchedStop>>(emptyList())
+    val fromSuggestions: StateFlow<List<MatchedStop>> = _fromSuggestions
+
+    private val _toSuggestions = MutableStateFlow<List<MatchedStop>>(emptyList())
+    val toSuggestions: StateFlow<List<MatchedStop>> = _toSuggestions
+
     init {
         // Fetch location on startup
         fetchLocation()
@@ -130,16 +139,60 @@ class LondonBusesViewModel(application: Application) : AndroidViewModel(applicat
 
     fun updateJourneyFromQuery(query: String) {
         _journeyFromQuery.value = query
+        val trimmed = query.trim()
+        if (trimmed.length >= 3 && trimmed.lowercase() != "current location" && trimmed.lowercase() != "my current location") {
+            viewModelScope.launch {
+                try {
+                    val response = apiService.searchStopPoints(trimmed)
+                    _fromSuggestions.value = response.matches
+                } catch (e: Exception) {
+                    _fromSuggestions.value = emptyList()
+                }
+            }
+        } else {
+            _fromSuggestions.value = emptyList()
+        }
     }
 
     fun updateJourneyToQuery(query: String) {
         _journeyToQuery.value = query
+        val trimmed = query.trim()
+        if (trimmed.length >= 3 && trimmed.lowercase() != "current location" && trimmed.lowercase() != "my current location") {
+            viewModelScope.launch {
+                try {
+                    val response = apiService.searchStopPoints(trimmed)
+                    _toSuggestions.value = response.matches
+                } catch (e: Exception) {
+                    _toSuggestions.value = emptyList()
+                }
+            }
+        } else {
+            _toSuggestions.value = emptyList()
+        }
+    }
+
+    fun clearFromSuggestions() {
+        _fromSuggestions.value = emptyList()
+    }
+
+    fun clearToSuggestions() {
+        _toSuggestions.value = emptyList()
     }
 
     fun searchJourney() {
-        val from = _journeyFromQuery.value.trim()
-        val to = _journeyToQuery.value.trim()
+        var from = _journeyFromQuery.value.trim()
+        var to = _journeyToQuery.value.trim()
         if (from.isEmpty() || to.isEmpty()) return
+
+        if (from.lowercase() == "current location" || from.lowercase() == "my current location") {
+            val loc = deviceLocation.value
+            from = "${loc.latitude},${loc.longitude}"
+        }
+
+        if (to.lowercase() == "current location" || to.lowercase() == "my current location") {
+            val loc = deviceLocation.value
+            to = "${loc.latitude},${loc.longitude}"
+        }
 
         viewModelScope.launch {
             _isJourneyLoading.value = true
@@ -150,7 +203,30 @@ class LondonBusesViewModel(application: Application) : AndroidViewModel(applicat
                 val results = apiService.getJourneyResults(from = from, to = to)
                 _journeyResults.value = results
                 if (results.journeys.isEmpty()) {
-                    _journeyError.value = "No journeys found between '$from' and '$to'."
+                    // Check if there is disambiguation in a 200 OK response (though TfL usually returns 300)
+                    if (results.fromLocationDisambiguation?.disambiguationOptions?.isNotEmpty() == true ||
+                        results.toLocationDisambiguation?.disambiguationOptions?.isNotEmpty() == true) {
+                        _journeyResults.value = results
+                    } else {
+                        _journeyError.value = "No journeys found between '${_journeyFromQuery.value.trim()}' and '${_journeyToQuery.value.trim()}'."
+                    }
+                }
+            } catch (e: retrofit2.HttpException) {
+                val errorBody = e.response()?.errorBody()?.string()
+                if (errorBody != null) {
+                    try {
+                        val parsed = json.decodeFromString<JourneyResponse>(errorBody)
+                        if (parsed.fromLocationDisambiguation?.disambiguationOptions?.isNotEmpty() == true ||
+                            parsed.toLocationDisambiguation?.disambiguationOptions?.isNotEmpty() == true) {
+                            _journeyResults.value = parsed
+                        } else {
+                            _journeyError.value = "Failed to plan journey. Please check your locations and try again."
+                        }
+                    } catch (parseEx: Exception) {
+                        _journeyError.value = "Failed to plan journey. Please check your locations and try again."
+                    }
+                } else {
+                    _journeyError.value = "Failed to plan journey. Please check your locations and try again."
                 }
             } catch (e: Exception) {
                 _journeyError.value = "Failed to plan journey. Please check your locations and try again."
